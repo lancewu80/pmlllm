@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "PM-LLM",
+    "slug": "pmllm",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "pmllm",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a1a2e"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pmllm.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a1a2e"
+      },
+      "package": "com.pmllm.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-dev-client",
+      "expo-asset",
+      "expo-font"
+    ],
+    "newArchEnabled": false
+  }
+}

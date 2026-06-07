@@ -1,0 +1,20 @@
+export default {
+  appName: 'PM-LLM 專案管理',
+  sidebar: {
+    projects: '專案管理',
+    dashboard: '儀表板',
+    tasks: '任務管理',
+    users: '使用者管理',
+    gantt: '甘特圖',
+    pert: 'PERT 圖',
+    criticalPath: '要徑分析',
+  },
+  common: { save: '儲存', cancel: '取消', delete: '刪除', edit: '編輯', add: '新增', search: '搜尋', confirm: '確認', loading: '載入中...', noData: '暫無資料', required: '必填', submit: '提交', close: '關閉', status: '狀態', actions: '操作', name: '名稱', langSwitch: 'English' },
+  project: { title: '專案總覽', name: '專案名稱', startDate: '開始日期', endDate: '結束日期', duration: '工期（天）', progress: '進度', status: '狀態', statusPlanned: '規劃中', statusInProgress: '進行中', statusCompleted: '已完成', statusOnHold: '暫停', newProject: '新增專案', editProject: '編輯專案', switchProject: '切換專案', deleteConfirm: '確定刪除此專案？', selectProject: '選擇專案', currentProject: '目前專案', saveSuccess: '專案已儲存', createSuccess: '專案已建立' },
+  task: { title: '任務列表', name: '任務名稱', description: '任務描述', assignee: '負責人', startDate: '開始日期', endDate: '結束日期', duration: '工期（天）', progress: '進度 %', status: '狀態', statusNotStarted: '未開始', statusInProgress: '進行中', statusCompleted: '已完成', statusBlocked: '受阻', predecessors: '前置任務', addPredecessor: '新增前置任務', noPredecessors: '無前置任務', type: '類型', isMilestone: '里程碑', requiredField: '請填寫任務名稱', deleteConfirm: '確定刪除此任務？', addSuccess: '任務已新增', editSuccess: '任務已更新', deleteSuccess: '任務已刪除' },
+  user: { title: '使用者管理', name: '使用者名稱', email: '電子郵件', role: '角色', roles: { admin: '管理員', manager: '專案經理', member: '成員', viewer: '檢視者' }, addUser: '新增使用者', editUser: '編輯使用者', deleteConfirm: '確定刪除此使用者？' },
+  gantt: { title: '甘特圖', zoomIn: '放大', zoomOut: '縮小', today: '今天', tasks: '任務', milestone: '里程碑', criticalPath: '要徑', criticalPathLabel: '要徑任務', week: '週', month: '月' },
+  pert: { title: 'PERT 圖', criticalPath: '要徑', earlyStart: '最早開始', earlyFinish: '最早完成', lateStart: '最晚開始', lateFinish: '最晚完成', floatTime: '浮時', duration: '工期', task: '任務', milestone: '里程碑', legend: '圖例', normalTask: '一般任務', criticalTask: '要徑任務' },
+  criticalPath: { title: '要徑分析', pathTasks: '要徑任務順序', totalDuration: '總工期', floatTime: '浮時', critical: '要徑', nonCritical: '非要徑', description: '要徑（Critical Path）是專案中最長的路徑，決定了最短完工時間。任何要徑上的任務延遲都會直接影響專案總工期。', lag: '延遲', tolerance: '容忍度' },
+  dashboard: { title: '儀表板', totalTasks: '總任務數', completedTasks: '已完成', inProgressTasks: '進行中', overdueTasks: '逾期', totalUsers: '使用者', projectProgress: '專案進度', upcomingMilestones: '即將到來的里程碑', teamWorkload: '團隊工作量', criticalPathInfo: '要徑資訊' },
+};
