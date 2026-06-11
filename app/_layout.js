@@ -19,6 +19,8 @@ function CustomDrawerContent({ navigation }) {
     { name: 'gantt', label: t('sidebar.gantt'), icon: '📈' },
     { name: 'pert', label: t('sidebar.pert'), icon: '🔗' },
     { name: 'criticalpath', label: t('sidebar.criticalPath'), icon: '⚡' },
+    { name: 'import', label: t('sidebar.import'), icon: '📥' },
+    { name: 'export', label: t('sidebar.export'), icon: '📤' },
   ];
 
   return (
@@ -66,6 +68,8 @@ function DrawerLayout() {
       <Drawer.Screen name="gantt" options={{ title: 'Gantt' }} />
       <Drawer.Screen name="pert" options={{ title: 'PERT' }} />
       <Drawer.Screen name="criticalpath" options={{ title: 'Critical Path' }} />
+      <Drawer.Screen name="import" options={{ title: '匯入 xlsx' }} />
+      <Drawer.Screen name="export" options={{ title: '匯出專案' }} />
     </Drawer>
   );
 }

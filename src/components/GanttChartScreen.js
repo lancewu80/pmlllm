@@ -3,41 +3,49 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from
 import { I18nContext } from '../i18n';
 import useStore from '../store/useStore';
 import { computeCriticalPath } from '../utils/criticalPath';
+import ProjectSwitcher from './ProjectSwitcher';
 
 const BAR_H = 28;
 const ROW_H = 44;
 const LABEL_W = 130;
 const HEADER_H = 44;
 
+const EMPTY_ARR = [];
+
 export default function GanttChartScreen() {
   const { t } = useContext(I18nContext);
-  const tasks = useStore(s => s.currentTasks);
-  const users = useStore(s => s.users);
   const projectId = useStore(s => s.currentProjectId);
+  const tasks = useStore(s => s.tasksByProject[s.currentProjectId] || EMPTY_ARR);
+  const users = useStore(s => s.users);
   const key = projectId;
   const [zoom, setZoom] = useState(1);
   const [critOnly, setCritOnly] = useState(false);
+  const [sortAsc, setSortAsc] = useState(true); // true = oldest first (default)
 
   const { nodes, criticalIds, numDays, baseMs } = useMemo(
     () => computeCriticalPath(tasks),
     [tasks]
   );
 
-  // Compute display items: tasks augmented with CPM data
+  // Compute display items: tasks augmented with CPM data, sorted by actual startDate
   const displayItems = useMemo(() => {
     if (nodes.length === 0) return [];
     const critSet = new Set(criticalIds);
     const filtered = critOnly ? nodes.filter(n => critSet.has(n.id) && !n.isMilestone) : nodes;
-    return filtered.map(n => ({
-      ...n,
-      isCrit: critSet.has(n.id),
-      assigneeName: users.find(u => u.id === (n.assigneeId || n.assignee))?.name || '',
-    }));
-  }, [nodes, criticalIds, critOnly, users]);
+    const dir = sortAsc ? 1 : -1;
+    return filtered
+      .map(n => ({
+        ...n,
+        isCrit: critSet.has(n.id),
+        assigneeName: users.find(u => u.id === (n.assigneeId || n.assignee))?.name || '',
+      }))
+      .sort((a, b) => (a.startDate || '').localeCompare(b.startDate || '') * dir);
+  }, [nodes, criticalIds, critOnly, users, sortAsc]);
 
   if (displayItems.length === 0) {
     return (
       <View key={projectId} style={s.c}>
+        <ProjectSwitcher />
         <View style={s.ctrl}>
           <TouchableOpacity style={s.ctBtn} onPress={() => setZoom(z => Math.max(0.5, z - 0.25))}>
             <Text style={s.ctT}>− {t('gantt.zoomOut')}</Text>
@@ -45,6 +53,9 @@ export default function GanttChartScreen() {
           <Text style={s.ctL}>{Math.round(zoom * 100)}%</Text>
           <TouchableOpacity style={s.ctBtn} onPress={() => setZoom(z => Math.min(4, z + 0.25))}>
             <Text style={s.ctT}>+ {t('gantt.zoomIn')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.ctBtn} onPress={() => setSortAsc(v => !v)}>
+            <Text style={s.ctT}>{sortAsc ? '↑ 最舊' : '↓ 最新'}</Text>
           </TouchableOpacity>
         </View>
         <View style={s.emptyC}>
@@ -57,13 +68,23 @@ export default function GanttChartScreen() {
     );
   }
 
+  // Helper: convert actual date to day offset from baseMs
+  const toDay = (dateStr) =>
+    baseMs ? Math.round((new Date(dateStr).getTime() - baseMs) / 86400000) : 0;
+
+  // Compute actual span from real task dates (CPM resets es=0 for tasks w/ no predecessors)
+  const actualNumDays = displayItems.reduce((max, n) => {
+    const endDay = toDay(n.endDate);
+    return Math.max(max, endDay + 1);
+  }, numDays);
+
   const dayW = 24 * zoom;
-  const chartW = Math.max(numDays * dayW, Dimensions.get('window').width - LABEL_W);
+  const chartW = Math.max(actualNumDays * dayW, Dimensions.get('window').width - LABEL_W);
   const totalH = HEADER_H + displayItems.length * ROW_H + 30;
 
-  // Generate headers
+  // Generate headers using actual span
   const dayHeaders = [];
-  for (let d = 0; d < numDays; d++) {
+  for (let d = 0; d < actualNumDays; d++) {
     const dt = new Date(baseMs + d * 86400000);
     dayHeaders.push({
       label: `${dt.getMonth() + 1}/${dt.getDate()}`,
@@ -74,6 +95,7 @@ export default function GanttChartScreen() {
 
   return (
     <View key={projectId} style={s.c}>
+      <ProjectSwitcher />
       {/* Controls */}
       <View style={s.ctrl}>
         <TouchableOpacity style={s.ctBtn} onPress={() => setZoom(z => Math.max(0.5, z - 0.25))}>
@@ -85,6 +107,9 @@ export default function GanttChartScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={[s.ctBtn, critOnly && s.ctBtnA]} onPress={() => setCritOnly(!critOnly)}>
           <Text style={[s.ctT, critOnly && { color: '#e94560' }]}>{t('gantt.criticalPathLabel')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.ctBtn} onPress={() => setSortAsc(v => !v)}>
+          <Text style={s.ctT}>{sortAsc ? '↑ 最舊' : '↓ 最新'}</Text>
         </TouchableOpacity>
         <Text style={s.taskCount}>{displayItems.length} {t('gantt.tasks')}</Text>
       </View>
@@ -102,8 +127,12 @@ export default function GanttChartScreen() {
 
           {/* Task rows */}
           {displayItems.map((n, idx) => {
-            const barLeft = n.es * dayW + LABEL_W;
-            const barW = Math.max(n.duration * dayW, dayW);
+            // Use actual scheduled dates, not CPM es (which resets to 0 for independent tasks)
+            const startDay = Math.max(0, toDay(n.startDate));
+            const endDay = toDay(n.endDate);
+            const durDays = Math.max(1, endDay - startDay + 1);
+            const barLeft = startDay * dayW;   // bar is inside chart area, no LABEL_W offset needed
+            const barW = Math.max(durDays * dayW, dayW);
 
             return (
               <View key={n.id} style={[s.taskRow, { width: chartW + LABEL_W }]}>
@@ -128,7 +157,7 @@ export default function GanttChartScreen() {
                       ) : (
                         <>
                           <Text style={s.barLabel}>{n.name}</Text>
-                          <Text style={s.barDuration}>{n.duration}d</Text>
+                          <Text style={s.barDuration}>{durDays}d</Text>
                         </>
                       )}
                     </View>
@@ -143,7 +172,8 @@ export default function GanttChartScreen() {
             (() => {
               const todayMs = Date.now();
               const todayDay = Math.round((todayMs - baseMs) / 86400000);
-              if (todayDay >= 0 && todayDay < numDays) {
+              if (todayDay >= 0 && todayDay < actualNumDays) {
+                // today marker is in the outer wrapper (label + chart), so + LABEL_W is correct
                 return <View style={[s.todayLine, { left: todayDay * dayW + LABEL_W, height: totalH }]} />;
               }
               return null;
@@ -168,7 +198,7 @@ const s = StyleSheet.create({
   taskCount: { color: '#666', fontSize: 11, marginLeft: 'auto' },
   headerRow: { flexDirection: 'row', height: HEADER_H, alignItems: 'flex-end', borderBottomWidth: 1, borderBottomColor: '#0f3460' },
   dayH: { alignItems: 'center', justifyContent: 'center', paddingBottom: 2 },
-  dayHT: { color: '#888', fontSize: 9 },
+  dayHT: { color: '#c0c0d0', fontSize: 9 },
   taskRow: { flexDirection: 'row', height: ROW_H, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)', alignItems: 'center' },
   taskLabel: { width: LABEL_W, paddingLeft: 8, justifyContent: 'center', paddingRight: 4 },
   taskName: { color: '#fff', fontSize: 12, fontWeight: '500' },

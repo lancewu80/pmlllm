@@ -84,64 +84,66 @@ export default function ProjectScreen() {
 
   return (
     <View style={s.c}>
-      {/* Confirm bar — visible when a pending project is selected */}
-      {pendingId && pendingId !== currentId && (
-        <View style={s.confirmBar}>
-          <Text style={s.confirmText}>
-            {t('project.switchProject')}: {projects[pendingId]?.name || ''}
-          </Text>
-          <View style={s.confirmBtns}>
-            <TouchableOpacity style={s.confirmCancel} onPress={cancelProjectSwitch}>
-              <Text style={s.confirmCancelT}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.confirmOk} onPress={confirmProjectSwitch}>
-              <Text style={s.confirmOkT}>✓ {t('common.confirm')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
       <FlatList
         data={projList}
         keyExtractor={i => i.id}
         renderItem={({ item }) => {
           const active = item.id === currentId;
           const pending = item.id === pendingId && item.id !== currentId;
-          const statusColors = { planned: '#666', inProgress: '#3498db', completed: '#27ae60', onHold: '#f39c12' };
+          const statusColors = { planned: '#555', inProgress: '#2471a3', completed: '#1e8449', onHold: '#b7770d' };
           const statKey = 'project.status' + item.status.charAt(0).toUpperCase() + item.status.slice(1);
           return (
             <TouchableOpacity
-              style={[
-                s.pc,
-                active && s.pcActive,
-                pending && s.pcPending,
-              ]}
-              onPress={() => selectProject(item.id)}
-              activeOpacity={0.7}
+              style={[s.pc, active && s.pcActive, pending && s.pcPending]}
+              onPress={() => !active && selectProject(item.id)}
+              activeOpacity={active ? 1 : 0.7}
             >
+              {/* Header row */}
               <View style={s.pcH}>
-                <Text style={[s.pn, (active || pending) && { color: pending ? '#3498db' : '#e94560' }]} numberOfLines={1}>
+                <Text style={[s.pn, active && { color: '#e94560' }, pending && { color: '#f39c12' }]} numberOfLines={1}>
                   {item.name}
                 </Text>
-                {active && !pending && <Text style={s.activeBadge}>{t('project.currentProject')}</Text>}
-                {pending && <Text style={s.pendingBadge}>{t('common.select')}</Text>}
+                {active && <Text style={s.activeBadge}>✓ {t('project.currentProject')}</Text>}
               </View>
+
+              {/* Date + status */}
               <View style={s.pm}>
                 <Text style={s.pd}>{item.startDate || '?'} → {item.endDate || '?'}</Text>
-                <Text style={[s.ps, { backgroundColor: statusColors[item.status] || '#666' }]}>{t(statKey)}</Text>
+                <View style={[s.statusBadge, { backgroundColor: statusColors[item.status] || '#555' }]}>
+                  <Text style={s.statusBadgeT}>{t(statKey)}</Text>
+                </View>
               </View>
-              <View style={s.pa}>
-                <TouchableOpacity style={s.ab} onPress={() => handleEdit(item)}>
-                  <Text style={s.at}>{t('common.edit')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[s.ab, s.db]}
-                  onPress={() => Alert.alert('', t('project.deleteConfirm'), [
-                    { text: t('common.cancel'), style: 'cancel' },
-                    { text: t('common.delete'), style: 'destructive', onPress: () => deleteProject(item.id) },
-                  ])}>
-                  <Text style={[s.at, { color: '#e74c3c' }]}>{t('common.delete')}</Text>
-                </TouchableOpacity>
-              </View>
+
+              {/* Pending: inline confirm section */}
+              {pending && (
+                <View style={s.pendingBox}>
+                  <Text style={s.pendingHint}>⚡ 切換到此專案？</Text>
+                  <View style={s.pendingBtns}>
+                    <TouchableOpacity style={s.cancelInline} onPress={cancelProjectSwitch}>
+                      <Text style={s.cancelInlineT}>{t('common.cancel')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.confirmInline} onPress={confirmProjectSwitch}>
+                      <Text style={s.confirmInlineT}>✓ {t('common.confirm')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* Edit / Delete (only when not pending) */}
+              {!pending && (
+                <View style={s.pa}>
+                  <TouchableOpacity style={s.ab} onPress={() => handleEdit(item)}>
+                    <Text style={s.at}>{t('common.edit')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.ab, s.db]}
+                    onPress={() => Alert.alert('', t('project.deleteConfirm'), [
+                      { text: t('common.cancel'), style: 'cancel' },
+                      { text: t('common.delete'), style: 'destructive', onPress: () => deleteProject(item.id) },
+                    ])}>
+                    <Text style={[s.at, { color: '#e74c3c' }]}>{t('common.delete')}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </TouchableOpacity>
           );
         }}
@@ -166,39 +168,30 @@ const s = StyleSheet.create({
   abtn: { backgroundColor: '#e94560', padding: 14, borderRadius: 8, alignItems: 'center', marginBottom: 12 },
   abt: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 
-  // Confirm bar
-  confirmBar: {
-    backgroundColor: '#0f3460',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e94560',
-  },
-  confirmText: { color: '#fff', fontSize: 13, flex: 1, marginRight: 8 },
-  confirmBtns: { flexDirection: 'row', gap: 8 },
-  confirmCancel: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 6, backgroundColor: '#1a1a2e' },
-  confirmCancelT: { color: '#a0a0b0', fontSize: 12 },
-  confirmOk: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 6, backgroundColor: '#e94560' },
-  confirmOkT: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-
   // Project card
   pc: { backgroundColor: '#16213e', borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 2, borderColor: 'transparent' },
   pcActive: { borderColor: '#e94560' },
-  pcPending: { borderColor: '#3498db' },
+  pcPending: { borderColor: '#f39c12', backgroundColor: '#1c1a10' },
   pcH: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   pn: { color: '#fff', fontSize: 16, fontWeight: 'bold', flex: 1, marginRight: 8 },
   activeBadge: { color: '#e94560', fontSize: 10, backgroundColor: 'rgba(233,69,96,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
-  pendingBadge: { color: '#3498db', fontSize: 10, backgroundColor: 'rgba(52,152,219,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
   pm: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   pd: { color: '#a0a0b0', fontSize: 12, flex: 1 },
-  ps: { color: '#fff', fontSize: 11, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  statusBadgeT: { color: '#fff', fontSize: 11 },
   pa: { flexDirection: 'row', gap: 8, marginTop: 8, justifyContent: 'flex-end' },
   ab: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 4, backgroundColor: '#0f3460' },
   db: { backgroundColor: 'rgba(231,76,60,0.15)' },
   at: { color: '#4fc3f7', fontSize: 12 },
+
+  // Inline confirm (shown on pending card)
+  pendingBox: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#f39c12', paddingTop: 10 },
+  pendingHint: { color: '#f39c12', fontSize: 14, fontWeight: '600', marginBottom: 10 },
+  pendingBtns: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end' },
+  cancelInline: { paddingVertical: 8, paddingHorizontal: 18, borderRadius: 8, backgroundColor: '#0f3460' },
+  cancelInlineT: { color: '#a0a0b0', fontSize: 13 },
+  confirmInline: { paddingVertical: 8, paddingHorizontal: 22, borderRadius: 8, backgroundColor: '#f39c12' },
+  confirmInlineT: { color: '#000', fontSize: 13, fontWeight: 'bold' },
 });
 
 const m = StyleSheet.create({

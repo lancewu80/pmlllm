@@ -8,6 +8,8 @@ export default {
     gantt: '甘特圖',
     pert: 'PERT 圖',
     criticalPath: '要徑分析',
+    import: '匯入 xlsx',
+    export: '匯出專案',
   },
   common: { save: '儲存', cancel: '取消', delete: '刪除', edit: '編輯', add: '新增', search: '搜尋', confirm: '確認', loading: '載入中...', noData: '暫無資料', required: '必填', submit: '提交', close: '關閉', status: '狀態', actions: '操作', name: '名稱', langSwitch: 'English' },
   project: { title: '專案總覽', name: '專案名稱', startDate: '開始日期', endDate: '結束日期', duration: '工期（天）', progress: '進度', status: '狀態', statusPlanned: '規劃中', statusInProgress: '進行中', statusCompleted: '已完成', statusOnHold: '暫停', newProject: '新增專案', editProject: '編輯專案', switchProject: '切換專案', deleteConfirm: '確定刪除此專案？', selectProject: '選擇專案', currentProject: '目前專案', saveSuccess: '專案已儲存', createSuccess: '專案已建立' },

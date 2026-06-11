@@ -10,6 +10,7 @@ const sampleUsers = [
 const sampleTasks = [
   {
     id: 't1',
+    projectId: 'p1',
     name: '需求分析',
     description: '收集並分析客戶需求，產出需求規格書',
     assignee: 'u1',
@@ -23,6 +24,7 @@ const sampleTasks = [
   },
   {
     id: 't2',
+    projectId: 'p1',
     name: '系統設計',
     description: '根據需求進行系統架構設計',
     assignee: 'u2',
@@ -36,6 +38,7 @@ const sampleTasks = [
   },
   {
     id: 't7',
+    projectId: 'p1',
     name: '設計審查完成',
     description: '系統設計審查通過',
     assignee: 'u2',
@@ -49,6 +52,7 @@ const sampleTasks = [
   },
   {
     id: 't3',
+    projectId: 'p1',
     name: '前端開發',
     description: '實現前端使用者介面與互動邏輯',
     assignee: 'u3',
@@ -62,6 +66,7 @@ const sampleTasks = [
   },
   {
     id: 't4',
+    projectId: 'p1',
     name: '後端開發',
     description: '實現後端 API 與資料庫',
     assignee: 'u4',
@@ -75,6 +80,7 @@ const sampleTasks = [
   },
   {
     id: 't11',
+    projectId: 'p1',
     name: '技術文件撰寫',
     description: '撰寫 API 文件與部署手冊',
     assignee: 'u6',
@@ -88,6 +94,7 @@ const sampleTasks = [
   },
   {
     id: 't5',
+    projectId: 'p1',
     name: '整合測試',
     description: '前端與後端整合測試',
     assignee: 'u3',
@@ -101,6 +108,7 @@ const sampleTasks = [
   },
   {
     id: 't9',
+    projectId: 'p1',
     name: '使用者測試',
     description: '讓使用者進行驗收測試',
     assignee: 'u2',
@@ -114,6 +122,7 @@ const sampleTasks = [
   },
   {
     id: 't10',
+    projectId: 'p1',
     name: '效能優化',
     description: '系統效能調校與壓力測試',
     assignee: 'u6',
@@ -127,6 +136,7 @@ const sampleTasks = [
   },
   {
     id: 't6',
+    projectId: 'p1',
     name: '部署上線',
     description: '系統部署至正式環境並上線',
     assignee: 'u4',
@@ -140,6 +150,7 @@ const sampleTasks = [
   },
   {
     id: 't8',
+    projectId: 'p1',
     name: '上線發布',
     description: '系統正式上線發布完成',
     assignee: 'u2',

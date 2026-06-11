@@ -4,16 +4,19 @@ import Svg, { Rect, Text as SvgText, Line, Circle, G, Defs, Marker, Path, Polygo
 import { I18nContext } from '../i18n';
 import useStore from '../store/useStore';
 import { computeCriticalPath } from '../utils/criticalPath';
+import ProjectSwitcher from './ProjectSwitcher';
 
 const NODE_W = 120;
 const NODE_H = 72;
 const H_GAP = 60;
 const V_GAP = 30;
 
+const EMPTY_ARR = [];
+
 export default function PertChartScreen() {
   const { t } = useContext(I18nContext);
   const projectId = useStore(s => s.currentProjectId);
-  const tasks = useStore(s => s.currentTasks);
+  const tasks = useStore(s => s.tasksByProject[s.currentProjectId] || EMPTY_ARR);
   const [scale, setScale] = useState(1);
 
   const cpResult = useMemo(() => computeCriticalPath(tasks), [tasks, projectId]);
@@ -93,6 +96,7 @@ export default function PertChartScreen() {
   if (!nodes || nodes.length === 0) {
     return (
       <View style={s.c}>
+        <ProjectSwitcher />
         <View style={s.ctrl}>
           <TouchableOpacity style={s.ctBtn} disabled>
             <Text style={s.ctT}>−</Text>
@@ -118,6 +122,7 @@ export default function PertChartScreen() {
 
   return (
     <View style={s.c}>
+      <ProjectSwitcher />
       <View style={s.ctrl}>
         <TouchableOpacity style={s.ctBtn} onPress={() => setScale(s => Math.max(0.4, s - 0.2))}>
           <Text style={s.ctT}>− {t('gantt.zoomOut')}</Text>

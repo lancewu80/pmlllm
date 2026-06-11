@@ -32,18 +32,26 @@ const useStore = create((set, get) => ({
     const d = await loadAllData();
     if (!d) { set({ loaded: true }); return; }
     const s = {};
-    if (d.projects) s.projects = d.projects;
+    if (d.projects && typeof d.projects === 'object') s.projects = d.projects;
     if (d.currentProjectId && d.projects?.[d.currentProjectId]) s.currentProjectId = d.currentProjectId;
-    if (d.tasksByProject) s.tasksByProject = d.tasksByProject;
-    if (d.users) s.users = d.users;
+    if (d.tasksByProject && typeof d.tasksByProject === 'object') {
+      // Ensure all project arrays are actually arrays
+      const tbp = {};
+      for (const [k, v] of Object.entries(d.tasksByProject)) {
+        tbp[k] = Array.isArray(v) ? v : [];
+      }
+      s.tasksByProject = tbp;
+    }
+    if (d.users && Array.isArray(d.users)) s.users = d.users;
     if (d.lang) s.lang = d.lang;
     s.loaded = true;
     set(s);
   },
 
-  // ---- computed getters ----
-  get currentProject() { return get().projects[get().currentProjectId]; },
-  get currentTasks() { return get().tasksByProject[get().currentProjectId] || []; },
+  // NOTE: Do NOT use JS getters here — Zustand spread loses them after every set().
+  // Use per-component selectors instead:
+  //   tasks:   useStore(s => s.tasksByProject[s.currentProjectId] || [])
+  //   project: useStore(s => s.projects[s.currentProjectId])
 
   // ---- language ----
   setLang: (l) => { set({ lang: l }); save('lang', l); },
@@ -68,12 +76,20 @@ const useStore = create((set, get) => ({
     return id;
   },
 
-  // ---- NEW: select a project (pending, doesn't switch yet) ----
+  // ---- select a project (pending, for ProjectScreen confirm flow) ----
   selectProject: (id) => {
     set({ pendingProjectId: id });
   },
 
-  // ---- NEW: confirm the pending project switch ----
+  // ---- directly switch project (no confirm needed, used by TaskScreen) ----
+  switchProject: (id) => {
+    if (id && get().projects[id]) {
+      set({ currentProjectId: id, pendingProjectId: null });
+      save('currentProjectId', id);
+    }
+  },
+
+  // ---- confirm the pending project switch ----
   confirmProjectSwitch: () => {
     const pid = get().pendingProjectId;
     if (pid && get().projects[pid]) {
@@ -82,7 +98,7 @@ const useStore = create((set, get) => ({
     }
   },
 
-  // ---- NEW: cancel pending switch ----
+  // ---- cancel pending switch ----
   cancelProjectSwitch: () => {
     set({ pendingProjectId: null });
   },
@@ -131,29 +147,55 @@ const useStore = create((set, get) => ({
   },
 
   // ---- task CRUD (per-project) ----
-  _getTasksForPid(pid) { return get().tasksByProject[pid] || []; },
 
-  addTask: (t) => {
-    const pid = get().currentProjectId;
-    if (!pid) return;
+  // Add a task. targetPid defaults to currentProjectId.
+  addTask: (t, targetPid) => {
+    const pid = targetPid || get().currentProjectId;
+    if (!pid || !get().projects[pid]) return;
     const id = genId('t');
-    const task = { ...t, id, progress: t.progress ?? 0, status: t.status ?? 'notStarted', isMilestone: t.isMilestone ?? false, predecessors: t.predecessors ?? [] };
-    set({
-      tasksByProject: { ...get().tasksByProject, [pid]: [...(get().tasksByProject[pid] || []), task] },
-    });
+    const task = {
+      ...t, id, projectId: pid,
+      progress: t.progress ?? 0,
+      status: t.status ?? 'notStarted',
+      isMilestone: t.isMilestone ?? false,
+      predecessors: t.predecessors ?? [],
+    };
+    set({ tasksByProject: { ...get().tasksByProject, [pid]: [...(get().tasksByProject[pid] || []), task] } });
     save('tasksByProject', get().tasksByProject);
     return id;
   },
-  updateTask: (id, updates) => {
-    const pid = get().currentProjectId;
+
+  // Update a task in its current project (fromPid). If fromPid omitted, uses currentProjectId.
+  updateTask: (id, updates, fromPid) => {
+    const pid = fromPid || get().currentProjectId;
     if (!pid) return;
     set({
-      tasksByProject: { ...get().tasksByProject, [pid]: (get().tasksByProject[pid] || []).map(t => t.id === id ? { ...t, ...updates } : t) },
+      tasksByProject: {
+        ...get().tasksByProject,
+        [pid]: (get().tasksByProject[pid] || []).map(t => t.id === id ? { ...t, ...updates } : t),
+      },
     });
     save('tasksByProject', get().tasksByProject);
   },
-  deleteTask: (id) => {
-    const pid = get().currentProjectId;
+
+  // Move a task from one project to another (and apply updates).
+  // Clears predecessors since they're project-scoped.
+  moveTask: (taskId, fromPid, toPid, updates) => {
+    const tbp = { ...get().tasksByProject };
+    const fromList = tbp[fromPid] || [];
+    const task = fromList.find(t => t.id === taskId);
+    if (!task) return;
+    const updated = { ...task, ...updates, projectId: toPid, predecessors: [] };
+    tbp[fromPid] = fromList
+      .filter(t => t.id !== taskId)
+      .map(t => ({ ...t, predecessors: (t.predecessors || []).filter(p => p !== taskId) }));
+    tbp[toPid] = [...(tbp[toPid] || []), updated];
+    set({ tasksByProject: tbp });
+    save('tasksByProject', tbp);
+  },
+
+  deleteTask: (id, fromPid) => {
+    const pid = fromPid || get().currentProjectId;
     if (!pid) return;
     set({
       tasksByProject: {
@@ -164,6 +206,44 @@ const useStore = create((set, get) => ({
       },
     });
     save('tasksByProject', get().tasksByProject);
+  },
+
+  // ---- bulk import (xlsx) ----
+  // projects: { [id]: projectObj }
+  // tasksByProject: { [projectId]: [taskObj, ...] }
+  bulkImport: ({ projects, tasksByProject }) => {
+    // Projects: spread-merge so re-importing same project_id updates it in place.
+    const newProjects = { ...get().projects, ...projects };
+    const newTbp = { ...get().tasksByProject };
+    for (const [pid, incomingTasks] of Object.entries(tasksByProject)) {
+      const existing = newTbp[pid] || [];
+
+      // Build index of existing tasks by id AND by rawId (original xlsx task_id).
+      // This handles legacy tasks that were imported before rawId was stored.
+      const byId  = new Map(existing.map(t => [t.id,    t]));
+      const byRaw = new Map(existing.filter(t => t.rawId).map(t => [t.rawId, t]));
+
+      for (const t of incomingTasks) {
+        // If an existing task shares the same rawId but a different internal id
+        // (legacy timestamp id), remove the old entry first.
+        if (t.rawId && byRaw.has(t.rawId)) {
+          const old = byRaw.get(t.rawId);
+          if (old.id !== t.id) byId.delete(old.id);
+          byRaw.delete(t.rawId);
+        }
+        byId.set(t.id, t);
+        if (t.rawId) byRaw.set(t.rawId, t);
+      }
+
+      newTbp[pid] = Array.from(byId.values());
+    }
+    // Switch to first imported project
+    const firstPid = Object.keys(projects)[0];
+    const newCurrent = firstPid || get().currentProjectId;
+    set({ projects: newProjects, tasksByProject: newTbp, currentProjectId: newCurrent });
+    save('projects', newProjects);
+    save('tasksByProject', newTbp);
+    save('currentProjectId', newCurrent);
   },
 
   // ---- reset ----

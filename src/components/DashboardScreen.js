@@ -1,18 +1,20 @@
 import React, { useContext } from 'react';
 import {
-  ScrollView, View, Text, TouchableOpacity, StyleSheet,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
 import { I18nContext } from '../i18n';
 import useStore from '../store/useStore';
 import { computeCriticalPath } from '../utils/criticalPath';
+import ProjectSwitcher from './ProjectSwitcher';
+
+const EMPTY_ARR = [];
 
 export default function DashboardScreen({ navigation }) {
   const { t } = useContext(I18nContext);
-  const project = useStore(s => s.currentProject);
-  const tasks = useStore(s => s.currentTasks);
-  const users = useStore(s => s.users);
   const projectId = useStore(s => s.currentProjectId);
-  const resetToSample = useStore(s => s.resetToSample);
+  const project = useStore(s => s.projects[s.currentProjectId]);
+  const tasks = useStore(s => s.tasksByProject[s.currentProjectId] || EMPTY_ARR);
+  const users = useStore(s => s.users);
 
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((x) => x.status === 'completed').length;
@@ -25,7 +27,7 @@ export default function DashboardScreen({ navigation }) {
   }).length;
 
   const totalUsers = users.length;
-  const { totalDuration, criticalIds } = computeCriticalPath(tasks);
+  const { totalDuration = 0, criticalIds = [] } = computeCriticalPath(tasks) || {};
   const milestones = tasks.filter((x) => x.isMilestone).slice(0, 5);
 
   const pct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -33,11 +35,15 @@ export default function DashboardScreen({ navigation }) {
   const roleColors = { admin: '#e94560', manager: '#f39c12', member: '#3498db', viewer: '#95a5a6' };
 
   return (
-    <ScrollView key={projectId} style={s.c} contentContainerStyle={s.cc}>
+    <View key={projectId} style={s.c}>
+      <ProjectSwitcher />
+    <ScrollView contentContainerStyle={s.cc}>
       {/* Header */}
       <View style={s.h}>
-        <Text style={s.hT}>{project.name}</Text>
-        <Text style={s.hS}>{t('project.status' + project.status.charAt(0).toUpperCase() + project.status.slice(1))}</Text>
+        <Text style={s.hT}>{project?.name || '—'}</Text>
+        {project?.status ? (
+          <Text style={s.hS}>{t('project.status' + project.status.charAt(0).toUpperCase() + project.status.slice(1))}</Text>
+        ) : null}
       </View>
 
       {/* Progress */}
@@ -88,14 +94,14 @@ export default function DashboardScreen({ navigation }) {
       <View style={s.card}>
         <Text style={s.cardT}>{t('dashboard.teamWorkload')}</Text>
         {users.map((u) => {
-          const cnt = tasks.filter((x) => x.assigneeId === u.id && x.status !== 'completed').length;
-          const max = Math.max(1, ...users.map((u2) => tasks.filter((x) => x.assigneeId === u2.id && x.status !== 'completed').length));
+          const cnt = tasks.filter((x) => x.assignee === u.id && x.status !== 'completed').length;
+          const max = Math.max(1, ...users.map((u2) => tasks.filter((x) => x.assignee === u2.id && x.status !== 'completed').length));
           const w = (cnt / max) * 100;
           return (
             <View key={u.id} style={s.wRow}>
               <View style={s.wL}>
                 <View style={[s.av, { backgroundColor: roleColors[u.role] || '#95a5a6' }]}>
-                  <Text style={s.avT}>{u.name[0]}</Text>
+                  <Text style={s.avT}>{(u.name || '?')[0]}</Text>
                 </View>
                 <Text style={s.wN}>{u.name}</Text>
               </View>
@@ -106,19 +112,15 @@ export default function DashboardScreen({ navigation }) {
         })}
       </View>
 
-      {/* Reset */}
-      <TouchableOpacity style={s.reset} onPress={resetToSample}>
-        <Text style={s.resetT}>{t('common.submit')} Reset Sample Data</Text>
-      </TouchableOpacity>
-
       <View style={{ height: 60 }} />
     </ScrollView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
   c: { flex: 1, backgroundColor: '#1a1a2e' },
-  cc: { padding: 16 },
+  cc: { padding: 16, paddingBottom: 40 },
   h: { marginBottom: 20 },
   hT: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
   hS: { color: '#e94560', fontSize: 14, marginTop: 4 },
@@ -146,6 +148,4 @@ const s = StyleSheet.create({
   wBar: { flex: 1, height: 6, backgroundColor: '#0f3460', borderRadius: 3, overflow: 'hidden', marginHorizontal: 8 },
   wF: { height: 6, backgroundColor: '#e94560', borderRadius: 3 },
   wC: { color: '#a0a0b0', fontSize: 12, width: 24, textAlign: 'right' },
-  reset: { backgroundColor: '#0f3460', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 8 },
-  resetT: { color: '#e94560', fontSize: 14, fontWeight: '600' },
 });

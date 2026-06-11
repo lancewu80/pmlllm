@@ -5,11 +5,14 @@ import {
 import { I18nContext } from '../i18n';
 import useStore from '../store/useStore';
 import { computeCriticalPath } from '../utils/criticalPath';
+import ProjectSwitcher from './ProjectSwitcher';
+
+const EMPTY_ARR = [];
 
 export default function CriticalPathAnalysisScreen() {
   const { t } = useContext(I18nContext);
   const projectId = useStore(s => s.currentProjectId);
-  const tasks = useStore(s => s.currentTasks);
+  const tasks = useStore(s => s.tasksByProject[s.currentProjectId] || EMPTY_ARR);
   const users = useStore(s => s.users);
   const { nodes, criticalIds, totalDuration } = useMemo(() => computeCriticalPath(tasks), [tasks, projectId]);
 
@@ -22,7 +25,9 @@ export default function CriticalPathAnalysisScreen() {
   }
 
   return (
-    <ScrollView style={s.c} contentContainerStyle={s.cc}>
+    <View style={s.c}>
+      <ProjectSwitcher />
+    <ScrollView contentContainerStyle={s.cc}>
       {/* Info Card */}
       <View style={s.card}>
         <Text style={s.cardT}>{t('criticalPath.title')}</Text>
@@ -140,6 +145,7 @@ export default function CriticalPathAnalysisScreen() {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+    </View>
   );
 }
 
