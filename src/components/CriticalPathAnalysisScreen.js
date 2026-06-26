@@ -1,6 +1,6 @@
 import React, { useContext, useMemo } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, Platform,
 } from 'react-native';
 import { I18nContext } from '../i18n';
 import useStore from '../store/useStore';
@@ -14,7 +14,19 @@ export default function CriticalPathAnalysisScreen() {
   const projectId = useStore(s => s.currentProjectId);
   const tasks = useStore(s => s.tasksByProject[s.currentProjectId] || EMPTY_ARR);
   const users = useStore(s => s.users);
+  const deleteTask = useStore(s => s.deleteTask);
   const { nodes, criticalIds, totalDuration } = useMemo(() => computeCriticalPath(tasks), [tasks, projectId]);
+
+  function confirmDelete(n) {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`確定要刪除「${n.name}」？`)) deleteTask(n.id, n.projectId || projectId);
+    } else {
+      Alert.alert('確認刪除', `確定要刪除「${n.name}」？`, [
+        { text: '取消', style: 'cancel' },
+        { text: '刪除', style: 'destructive', onPress: () => deleteTask(n.id, n.projectId || projectId) },
+      ]);
+    }
+  }
 
   const critTasks = nodes.filter((n) => criticalIds.includes(n.id));
   const nonCritTasks = nodes.filter((n) => !criticalIds.includes(n.id));
@@ -49,6 +61,9 @@ export default function CriticalPathAnalysisScreen() {
               <View style={s.nodeH}>
                 <Text style={s.nodeN}>{n.name}</Text>
                 <View style={s.critBadge}><Text style={s.critBT}>{t('criticalPath.critical')}</Text></View>
+                <TouchableOpacity style={s.nodeDelBtn} onPress={() => confirmDelete(n)}>
+                  <Text style={s.nodeDelBtnT}>🗑</Text>
+                </TouchableOpacity>
               </View>
               <View style={s.nodeRow}>
                 <Text style={s.nodeL}>{getUserName(n.assignee)}</Text>
@@ -82,6 +97,7 @@ export default function CriticalPathAnalysisScreen() {
               <Text style={s.tC}>{t('pert.floatTime')}</Text>
               <Text style={s.tC}>{t('project.duration')}</Text>
               <Text style={s.tC}>{t('common.status')}</Text>
+              <Text style={[s.tC, { width: 36 }]}> </Text>
             </View>
             {/* Critical tasks */}
             {critTasks.map((n) => (
@@ -94,6 +110,9 @@ export default function CriticalPathAnalysisScreen() {
                 <Text style={s.tC}>0</Text>
                 <Text style={s.tC}>{n.duration}</Text>
                 <Text style={s.tC}>{t('task.status' + n.status.charAt(0).toUpperCase() + n.status.slice(1))}</Text>
+                <TouchableOpacity style={s.tDelBtn} onPress={() => confirmDelete(n)}>
+                  <Text style={s.tDelBtnT}>🗑</Text>
+                </TouchableOpacity>
               </View>
             ))}
             {/* Non-critical tasks */}
@@ -107,6 +126,9 @@ export default function CriticalPathAnalysisScreen() {
                 <Text style={[s.tC, { color: '#f39c12' }]}>{n.float}</Text>
                 <Text style={s.tC}>{n.duration}</Text>
                 <Text style={s.tC}>{t('task.status' + n.status.charAt(0).toUpperCase() + n.status.slice(1))}</Text>
+                <TouchableOpacity style={s.tDelBtn} onPress={() => confirmDelete(n)}>
+                  <Text style={s.tDelBtnT}>🗑</Text>
+                </TouchableOpacity>
               </View>
             ))}
           </View>
@@ -159,8 +181,10 @@ const s = StyleSheet.create({
   hl: { color: '#e94560', fontWeight: '600' },
   node: { backgroundColor: '#0f3460', borderRadius: 8, padding: 12, borderLeftWidth: 3, borderLeftColor: '#e94560' },
   firstNode: {},
-  nodeH: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  nodeH: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 },
   nodeN: { color: '#fff', fontSize: 14, fontWeight: '600', flex: 1 },
+  nodeDelBtn: { width: 28, height: 28, borderRadius: 7, backgroundColor: 'rgba(233,69,96,0.2)', justifyContent: 'center', alignItems: 'center' },
+  nodeDelBtnT: { fontSize: 14 },
   critBadge: { backgroundColor: '#e94560', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
   critBT: { color: '#fff', fontSize: 10, fontWeight: '600' },
   nodeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 },
@@ -174,6 +198,8 @@ const s = StyleSheet.create({
   critRow: { backgroundColor: 'rgba(233,69,96,0.1)' },
   tC: { color: '#a0a0b0', fontSize: 11, width: 50, textAlign: 'center' },
   tNameC: { width: 80, textAlign: 'left', color: '#fff' },
+  tDelBtn: { width: 36, justifyContent: 'center', alignItems: 'center' },
+  tDelBtnT: { fontSize: 14 },
   fRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   fName: { color: '#fff', fontSize: 12, width: 80, marginRight: 6 },
   fBarC: { flex: 1, height: 18, flexDirection: 'row', alignItems: 'center' },

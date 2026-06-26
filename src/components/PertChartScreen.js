@@ -1,5 +1,5 @@
 import React, { useContext, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
 import Svg, { Rect, Text as SvgText, Line, Circle, G, Defs, Marker, Path, Polygon } from 'react-native-svg';
 import { I18nContext } from '../i18n';
 import useStore from '../store/useStore';
@@ -17,7 +17,23 @@ export default function PertChartScreen() {
   const { t } = useContext(I18nContext);
   const projectId = useStore(s => s.currentProjectId);
   const tasks = useStore(s => s.tasksByProject[s.currentProjectId] || EMPTY_ARR);
+  const deleteTask = useStore(s => s.deleteTask);
   const [scale, setScale] = useState(1);
+  const [selectedId, setSelectedId] = useState(null);
+
+  function confirmDelete(node) {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`確定要刪除「${node.name}」？`)) {
+        deleteTask(node.id, node.projectId || projectId);
+        setSelectedId(null);
+      }
+    } else {
+      Alert.alert('確認刪除', `確定要刪除「${node.name}」？`, [
+        { text: '取消', style: 'cancel' },
+        { text: '刪除', style: 'destructive', onPress: () => { deleteTask(node.id, node.projectId || projectId); setSelectedId(null); } },
+      ]);
+    }
+  }
 
   const cpResult = useMemo(() => computeCriticalPath(tasks), [tasks, projectId]);
   const nodes = cpResult?.nodes || [];
@@ -168,12 +184,14 @@ export default function PertChartScreen() {
               const h = NODE_H * scale;
               const isCrit = criticalIds.includes(n.id);
 
+              const isSelected = selectedId === n.id;
+
               if (n.isMilestone) {
                 return (
-                  <G key={n.id}>
+                  <G key={n.id} onPress={() => setSelectedId(isSelected ? null : n.id)}>
                     <Circle
                       cx={x + w / 2} cy={y + h / 2} r={Math.max(12, w / 4)}
-                      fill="#16213e" stroke="#f39c12" strokeWidth={2 * scale}
+                      fill={isSelected ? '#2a1a2e' : '#16213e'} stroke={isSelected ? '#fff' : '#f39c12'} strokeWidth={isSelected ? 3 * scale : 2 * scale}
                     />
                     <SvgText
                       x={x + w / 2} y={y + h / 2 + 4 * scale}
@@ -195,11 +213,12 @@ export default function PertChartScreen() {
 
               const fs = Math.max(7, 10 * scale);
               return (
-                <G key={n.id}>
+                <G key={n.id} onPress={() => setSelectedId(isSelected ? null : n.id)}>
                   <Rect
                     x={x} y={y} width={w} height={h} rx={6 * scale}
-                    fill="#16213e" stroke={isCrit ? '#e94560' : '#0f3460'}
-                    strokeWidth={isCrit ? 3 * scale : 1.5 * scale}
+                    fill={isSelected ? '#2a1530' : '#16213e'}
+                    stroke={isSelected ? '#fff' : (isCrit ? '#e94560' : '#0f3460')}
+                    strokeWidth={isSelected ? 3 * scale : (isCrit ? 3 * scale : 1.5 * scale)}
                   />
                   <SvgText x={x + w / 2} y={y + 14 * scale} fill="#fff" fontSize={fs} textAnchor="middle" fontWeight="bold">
                     {(n.name || '').length > 8 ? (n.name || '').slice(0, 7) + '..' : (n.name || '')}
@@ -221,6 +240,23 @@ export default function PertChartScreen() {
         </ScrollView>
       </ScrollView>
 
+      {/* Selected node action bar */}
+      {selectedId && (() => {
+        const node = nodes.find(n => n.id === selectedId);
+        if (!node) return null;
+        return (
+          <View style={s.actionBar}>
+            <Text style={s.actionName} numberOfLines={1}>📌 {node.name}</Text>
+            <TouchableOpacity style={s.actionDelBtn} onPress={() => confirmDelete(node)}>
+              <Text style={s.actionDelT}>🗑 刪除任務</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.actionCloseBtn} onPress={() => setSelectedId(null)}>
+              <Text style={s.actionCloseT}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      })()}
+
       <View style={s.leg}>
         <View style={s.legRow}><View style={[s.legDot, { backgroundColor: '#16213e', borderColor: '#0f3460' }]} /><Text style={s.legT}>{t('pert.normalTask')}</Text></View>
         <View style={s.legRow}><View style={[s.legDot, { backgroundColor: '#16213e', borderColor: '#e94560' }]} /><Text style={s.legT}>{t('pert.criticalTask')}</Text></View>
@@ -239,6 +275,12 @@ const s = StyleSheet.create({
   countT: { color: '#666', fontSize: 11, marginLeft: 'auto' },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyT: { color: '#a0a0b0', fontSize: 16 },
+  actionBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f3460', paddingHorizontal: 14, paddingVertical: 10, gap: 10, borderTopWidth: 1, borderTopColor: '#e94560' },
+  actionName: { flex: 1, color: '#fff', fontSize: 13, fontWeight: '600' },
+  actionDelBtn: { backgroundColor: '#e94560', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
+  actionDelT: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  actionCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
+  actionCloseT: { color: '#a0a0b0', fontSize: 14 },
   leg: { flexDirection: 'row', justifyContent: 'center', padding: 10, gap: 16, backgroundColor: '#16213e' },
   legRow: { flexDirection: 'row', alignItems: 'center' },
   legDot: { width: 12, height: 12, borderWidth: 2, borderRadius: 2, marginRight: 4 },

@@ -1,5 +1,5 @@
 import React, { useContext, useState, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Alert, Platform } from 'react-native';
 import { I18nContext } from '../i18n';
 import useStore from '../store/useStore';
 import { computeCriticalPath } from '../utils/criticalPath';
@@ -17,8 +17,20 @@ export default function GanttChartScreen() {
   const projectId = useStore(s => s.currentProjectId);
   const tasks = useStore(s => s.tasksByProject[s.currentProjectId] || EMPTY_ARR);
   const users = useStore(s => s.users);
+  const deleteTask = useStore(s => s.deleteTask);
   const key = projectId;
   const [zoom, setZoom] = useState(1);
+
+  function confirmDelete(id, pid) {
+    if (Platform.OS === 'web') {
+      if (window.confirm('確定要刪除此任務？')) deleteTask(id, pid || projectId);
+    } else {
+      Alert.alert('確認刪除', '確定要刪除此任務？', [
+        { text: '取消', style: 'cancel' },
+        { text: '刪除', style: 'destructive', onPress: () => deleteTask(id, pid || projectId) },
+      ]);
+    }
+  }
   const [critOnly, setCritOnly] = useState(false);
   const [sortAsc, setSortAsc] = useState(true); // true = oldest first (default)
 
@@ -138,8 +150,13 @@ export default function GanttChartScreen() {
               <View key={n.id} style={[s.taskRow, { width: chartW + LABEL_W }]}>
                 {/* Left label */}
                 <View style={s.taskLabel}>
-                  <Text style={s.taskName} numberOfLines={1}>{n.name}</Text>
-                  {n.assigneeName ? <Text style={s.taskAss} numberOfLines={1}>{n.assigneeName}</Text> : null}
+                  <View style={s.taskLabelText}>
+                    <Text style={s.taskName} numberOfLines={1}>{n.name}</Text>
+                    {n.assigneeName ? <Text style={s.taskAss} numberOfLines={1}>{n.assigneeName}</Text> : null}
+                  </View>
+                  <TouchableOpacity style={s.taskDelBtn} onPress={() => confirmDelete(n.id, n.projectId || projectId)}>
+                    <Text style={s.taskDelBtnT}>🗑</Text>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Chart area */}
@@ -200,9 +217,12 @@ const s = StyleSheet.create({
   dayH: { alignItems: 'center', justifyContent: 'center', paddingBottom: 2 },
   dayHT: { color: '#c0c0d0', fontSize: 9 },
   taskRow: { flexDirection: 'row', height: ROW_H, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)', alignItems: 'center' },
-  taskLabel: { width: LABEL_W, paddingLeft: 8, justifyContent: 'center', paddingRight: 4 },
+  taskLabel: { width: LABEL_W, paddingLeft: 8, flexDirection: 'row', alignItems: 'center', paddingRight: 2 },
+  taskLabelText: { flex: 1, justifyContent: 'center' },
   taskName: { color: '#fff', fontSize: 12, fontWeight: '500' },
   taskAss: { color: '#666', fontSize: 9, marginTop: 1 },
+  taskDelBtn: { width: 26, height: 26, borderRadius: 6, backgroundColor: 'rgba(233,69,96,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 2 },
+  taskDelBtnT: { fontSize: 12 },
   barBase: { position: 'absolute', height: BAR_H, borderRadius: 4, backgroundColor: '#16213e', borderWidth: 1, borderColor: '#0f3460', overflow: 'hidden', justifyContent: 'center', top: (ROW_H - BAR_H) / 2 },
   progFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#e94560', borderRadius: 3 },
   barContent: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, zIndex: 1 },

@@ -1,7 +1,7 @@
 import React, { useContext, useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, Modal, TextInput,
-  Switch, ScrollView, Alert, StyleSheet,
+  Switch, ScrollView, Alert, StyleSheet, Platform,
 } from 'react-native';
 import { I18nContext } from '../i18n';
 import useStore from '../store/useStore';
@@ -110,10 +110,16 @@ export default function TaskScreen() {
   }
 
   function confirmDelete(id, pid) {
-    Alert.alert(t('common.confirm'), t('task.deleteConfirm'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => { deleteTask(id, pid || projectId); Alert.alert('', t('task.deleteSuccess')); } },
-    ]);
+    if (Platform.OS === 'web') {
+      if (window.confirm(t('task.deleteConfirm'))) {
+        deleteTask(id, pid || projectId);
+      }
+    } else {
+      Alert.alert(t('common.confirm'), t('task.deleteConfirm'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: () => deleteTask(id, pid || projectId) },
+      ]);
+    }
   }
 
   function togglePred(pId) {
@@ -135,27 +141,32 @@ export default function TaskScreen() {
     const u = users.find((x) => x.id === tsk.assignee);
     const projName = projects[tsk.projectId]?.name || projects[projectId]?.name || '';
     return (
-      <TouchableOpacity style={s.card} onPress={() => openEdit(tsk)} onLongPress={() => confirmDelete(tsk.id, tsk.projectId)}>
-        {/* Project tag row */}
-        <View style={s.projTag}>
-          <Text style={s.projTagIcon}>📁</Text>
-          <Text style={s.projTagT} numberOfLines={1}>{projName}</Text>
-          {tsk.isMilestone && <Text style={s.mil}>◆ 里程碑</Text>}
-        </View>
-        <View style={s.ch}>
-          <Text style={s.cN}>{tsk.name}</Text>
-          <View style={[s.badge, { backgroundColor: STATUS_COLORS[tsk.status] || '#95a5a6' }]}>
-            <Text style={s.bT}>{t('task.status' + tsk.status.charAt(0).toUpperCase() + tsk.status.slice(1))}</Text>
+      <View style={s.card}>
+        <TouchableOpacity style={s.cardBody} onPress={() => openEdit(tsk)} activeOpacity={0.7}>
+          {/* Project tag row */}
+          <View style={s.projTag}>
+            <Text style={s.projTagIcon}>📁</Text>
+            <Text style={s.projTagT} numberOfLines={1}>{projName}</Text>
+            {tsk.isMilestone && <Text style={s.mil}>◆ 里程碑</Text>}
           </View>
-        </View>
-        {tsk.description ? <Text style={s.cD} numberOfLines={2}>{tsk.description}</Text> : null}
-        <View style={s.cr}>
-          <Text style={s.cL}>👤 {u ? u.name : '-'}</Text>
-          <Text style={s.cL}>{tsk.startDate} ~ {tsk.endDate}</Text>
-        </View>
-        <View style={s.pb}><View style={[s.pf, { width: tsk.progress + '%' }]} /></View>
-        <Text style={s.cP}>{tsk.progress}%</Text>
-      </TouchableOpacity>
+          <View style={s.ch}>
+            <Text style={s.cN}>{tsk.name}</Text>
+            <View style={[s.badge, { backgroundColor: STATUS_COLORS[tsk.status] || '#95a5a6' }]}>
+              <Text style={s.bT}>{t('task.status' + tsk.status.charAt(0).toUpperCase() + tsk.status.slice(1))}</Text>
+            </View>
+          </View>
+          {tsk.description ? <Text style={s.cD} numberOfLines={2}>{tsk.description}</Text> : null}
+          <View style={s.cr}>
+            <Text style={s.cL}>👤 {u ? u.name : '-'}</Text>
+            <Text style={s.cL}>{tsk.startDate} ~ {tsk.endDate}</Text>
+          </View>
+          <View style={s.pb}><View style={[s.pf, { width: tsk.progress + '%' }]} /></View>
+          <Text style={s.cP}>{tsk.progress}%</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.delBtn} onPress={() => confirmDelete(tsk.id, tsk.projectId)}>
+          <Text style={s.delBtnT}>🗑</Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
@@ -285,7 +296,10 @@ const s = StyleSheet.create({
   sortBtnT: { color: '#a0a0b0', fontSize: 12 },
   lc: { padding: 16, paddingBottom: 100 },
   empty: { color: '#a0a0b0', fontSize: 16, textAlign: 'center', marginTop: 60 },
-  card: { backgroundColor: '#16213e', borderRadius: 12, padding: 14, marginBottom: 10 },
+  card: { backgroundColor: '#16213e', borderRadius: 12, marginBottom: 10, flexDirection: 'row', alignItems: 'stretch' },
+  cardBody: { flex: 1, padding: 14 },
+  delBtn: { width: 44, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(233,69,96,0.12)', borderTopRightRadius: 12, borderBottomRightRadius: 12 },
+  delBtnT: { fontSize: 16 },
   projTag: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 4 },
   projTagIcon: { fontSize: 11, opacity: 0.7 },
   projTagT: { color: '#4fc3f7', fontSize: 11, fontWeight: '600', flex: 1 },
