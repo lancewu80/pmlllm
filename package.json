@@ -7,13 +7,20 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "build:android": "expo run:android --variant release"
+    "build:android": "expo run:android --variant release",
+
+    "electron:dev": "concurrently \"expo start --web --port 8081\" \"wait-on http://localhost:8081 && electron electron/main.js\"",
+    "electron:build:web": "expo export -p web --output-dir dist",
+    "electron:build:win": "npm run electron:build:web && electron-builder --win",
+    "electron:build:mac": "npm run electron:build:web && electron-builder --mac",
+    "electron:build:all": "npm run electron:build:web && electron-builder --win --mac"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.5",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-navigation/drawer": "^7.0.0",
     "@react-navigation/native": "^7.0.0",
+    "electron-serve": "^1.3.0",
     "expo": "~53.0.27",
     "expo-asset": "~11.1.7",
     "expo-constants": "~17.1.8",
@@ -39,6 +46,57 @@
     "xlsx": "^0.18.5",
     "xlsx-js-style": "^1.2.0",
     "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "electron": "^35.0.0",
+    "electron-builder": "^25.0.0",
+    "wait-on": "^8.0.0"
+  },
+  "build": {
+    "appId": "com.pmllm.app",
+    "productName": "PM-LLM",
+    "copyright": "Copyright © 2025 PM-LLM",
+    "extraMetadata": {
+      "main": "electron/main.js"
+    },
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "assets/adaptive-icon.png",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "assets/adaptive-icon.png"
+    },
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "assets/adaptive-icon.png",
+      "category": "public.app-category.productivity",
+      "darkModeSupport": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "dmg": {
+      "title": "PM-LLM Installer",
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    }
   },
   "private": true
 }
